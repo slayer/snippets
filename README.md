@@ -150,19 +150,19 @@ true | openssl s_client -showcerts -connect host:443 2>&1 |
 
 do not display session in `w`
 ```
-  bash -si
+bash -si
 ```
 
 has prefix?
 ```
-  if [ "${URL#http}" == "${URL}" ]; then
-    echo no prefix # wildcard also works
-  fi
+if [ "${URL#http}" == "${URL}" ]; then
+  echo no prefix # wildcard also works
+fi
 ```
 
 add prefix if needed
 ```
-  [ ${URL%%.sql.bz2.gpg} == ${URL} ] && URL="${URL}.sql.bz2.gpg"
+[ ${URL%%.sql.bz2.gpg} == ${URL} ] && URL="${URL}.sql.bz2.gpg"
 ```
 
 stdout redirection
@@ -196,8 +196,8 @@ exec 3>&-
 
 ## xkb capslock delay fix (?)
 ```
-  /usr/share/X11/xkb/symbols/capslock:
-  replace key <CAPS> {        repeat=no, [ ISO_Next_Group, Caps_Lock ] };
+/usr/share/X11/xkb/symbols/capslock:
+replace key <CAPS> {        repeat=no, [ ISO_Next_Group, Caps_Lock ] };
 ```
 
 ## apache2
@@ -284,6 +284,12 @@ sed 's/.* \(user_id=[0-9]\+\).*/\1/'
 
 
 ## docker
+aliases
+```
+alias docker-rm-unused-images='docker rmi $(docker images --filter "dangling=true" -q --no-trunc)'
+alias docker-rm-unused-volumes='docker volume rm $(docker volume ls -qf dangling=true)'
+```
+
 save all images
 ```
 docker images --format='{{.ID}}' | while read i; do docker save "$i" > "${i}.tar.gz"; done
