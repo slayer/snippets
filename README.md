@@ -43,6 +43,7 @@ gpg --armor --output my_backups_02.pub --export my_Backups_02
 
 gpg --import my_backups_02.pub # on remote side
 gpg --search-keys --keyserver pgp.mit.edu backups@aytm.com
+gpg --keyserver keyserver.ubuntu.com --recv 2871AA6619415A0E20A52EA398290B7291D02F3A
 
 gpg --encrypt -u backups@aytm.com -r backups@aytm.com FILE
 gpg --decrypt FILE.gpg >FILE
@@ -123,6 +124,7 @@ copy bucket
 ```
 # aws configure # do not forget
 aws s3 sync s3://my-bucket-in-eu-west1 s3://my-bucket-in-eu-central1 --source-region=eu-west-1 --region=eu-central-1 --size-only
+  # --acl public-read
 ```
 
 du
@@ -153,6 +155,11 @@ rsync -avz --checksum --delete \
 # get site list from https host
 true | openssl s_client -showcerts -connect host:443 2>&1 |
     openssl x509 -text | grep -o 'DNS:[^,]*' | cut -f2 -d:
+```
+
+# dump cert:
+```
+openssl x509 -text -noout -in cert.pem
 ```
 
 
@@ -203,6 +210,26 @@ done
 exec 3>&-
 ```
 
+append:
+```
+exec >>$LOG_FILE 2>&1
+```
+
+extended usage:
+```
+# Close STDOUT file descriptor
+exec 1<&-
+# Close STDERR FD
+exec 2<&-
+
+# Open STDOUT as $LOG_FILE file for read and write.
+exec 1<>$LOG_FILE
+
+# Redirect STDERR to STDOUT
+exec 2>&1
+
+echo "This line will appear in $LOG_FILE, not 'on screen'"
+```
 
 
 ## xkb capslock delay fix (?)
@@ -298,8 +325,9 @@ sed 's/.* \(user_id=[0-9]\+\).*/\1/'
 ## docker
 aliases
 ```
-alias docker-rm-unused-images='docker rmi $(docker images --filter "dangling=true" -q --no-trunc)'
+alias docker-rm-unused-images='docker images --filter "dangling=true" -q --no-trunc | xargs --no-run-if-empty docker rmi'
 alias docker-rm-unused-volumes='docker volume rm $(docker volume ls -qf dangling=true)'
+alias docker-rm-stopped-containers='docker ps --filter "status=exited" -q --no-trunc | xargs --no-run-if-empty docker rm'
 ```
 
 save all images
@@ -311,6 +339,18 @@ restore images
 ```
 ls *.tar.gz | xargs -n1 docker load -i
 ```
+
+get ips
+`docker inspect --format '{{ .NetworkSettings.IPAddress }}' $(docker ps -q)`
+
+get ports
+`docker port container-id `
+
+stats
+`docker stats container-id`
+
+container image diff
+`docker diff container-id`
 
 
 ## Go
@@ -404,9 +444,54 @@ reverse shell
 `nc 192.168.1.100 4444    # local`
 
 
+## tcpdump
+dump http traffic on `lo` and port 3200
+`sudo stdbuf -oL -eL /usr/sbin/tcpdump -i lo -A -s 10240 "tcp port 3200 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)" | egrep -a --line-buffered ".+(GET |HTTP\/|POST )|^[A-Za-z0-9-]+: " | perl -nle 'BEGIN{$|=1} { s/.*?(GET |HTTP\/[0-9.]* |POST )/\n$1/g; print }'`
+
 ## golang
 go install without vendor
 `go install $(go list ./... | grep -v vendor/)`
 or for glide
 `go install $(glide nv)`
+
+## proxmox
+restore from dump
+```
+qmrestore vzdump-qemu-107-2017_12_02-00_10_54.vma.lzo 202 --storage lvm-nvme
+```
+
+## bitcoin
+send all money
+
+```
+bitcoin-cli sendtoaddress ADDR `bitcoin-cli getbalance` "" "" true
+```
+
+## mosquitto
+
+```
+mosquitto_sub -v -h mqtt.flymon.net -t "+/+/uptime"
+mosquitto_sub -v -h flyhub.org -u devvlad@gmail.com -P xxxxx -t "devvlad@gmail.com/HoneyWell-1/#"
+
+```
+
+
+## zfs
+list
+`zfs list`
+
+create pool
+`zpool create pool1 /dev/sda2`
+
+status of pool
+`zpool status`
+
+
+snapshots:
+`zfs snapshot pool1@NAME`
+`zfs list -t snapshot`
+`zfs destroy pool1@NAME`
+`zfs rollback` # discard all changes made to a file system since a specific snapshot was created
+`zfs rollback -r pool1@tuesday`  # recursive
+
 
