@@ -118,6 +118,34 @@ git config --global url."git@github.com:".insteadOf "https://github.com/"
 ```
 
 
+## gitlab
+status:
+```
+gitlab-ctl status
+```
+
+stop/start/restart:
+```
+gitlab-ctl stop
+gitlab-ctl start
+gitlab-ctl restart
+```
+
+checks:
+```
+gitlab-rake gitlab:check
+```
+
+reconfigure:
+```
+sudo gitlab-ctl reconfigure
+```
+
+registry garbage collect
+```
+gitlab-ctl registry-garbage-collect
+```
+
 ## aws s3
 
 copy bucket
@@ -278,6 +306,17 @@ migrate home (encrypt)
 sudo ecryptfs-migrate-home -u user
 ```
 
+## systemd
+remove service
+```
+systemctl stop [servicename]
+systemctl disable [servicename]
+rm /etc/systemd/system/[servicename]
+rm /etc/systemd/system/[servicename] symlinks that might be related
+systemctl daemon-reload
+systemctl reset-failed
+```
+
 
 ## openvpn
 ### to systemd
@@ -300,6 +339,8 @@ ufw allow in on vmbr0
 ufw allow in on docker+
 ufw allow in on docker+ from any to any
 ufw allow in on tun+ from any
+
+ufw allow in on eth1 from any to any proto udp port 1197 comment "openvpn s1-s2"
 
 ```
 ufw+docker: https://svenv.nl/unixandlinux/dockerufw
@@ -422,6 +463,23 @@ convert <input file> -strip <output file>
 deploy  ALL = NOPASSWD: /bin/systemctl
 ```
 
+## locales
+generate locales
+```
+locale-gen en_US.UTF-8
+```
+
+manually generate locales
+```
+localedef -i en_US -f UTF-8 en_US.UTF-8
+```
+
+check:
+```
+locale
+```
+
+
 ## netcat
 scan tcp ports
 `nc -vnz 192.168.1.100 20-24`
@@ -473,6 +531,8 @@ bitcoin-cli sendtoaddress ADDR `bitcoin-cli getbalance` "" "" true
 mosquitto_sub -v -h mqtt.flymon.net -t "+/+/uptime"
 mosquitto_sub -v -h flyhub.org -u devvlad@gmail.com -P xxxxx -t "devvlad@gmail.com/HoneyWell-1/#"
 
+mosquitto_pub -t user@domain.com/001122334455/temp -r -m 1234.56
+
 ```
 
 
@@ -493,5 +553,27 @@ snapshots:
 `zfs destroy pool1@NAME`
 `zfs rollback` # discard all changes made to a file system since a specific snapshot was created
 `zfs rollback -r pool1@tuesday`  # recursive
+
+## inputrc
+
+to see codes do `cat /dev/null` and press keys, replace `^[` with `\e`.
+example:
+
+```sh
+cat >/dev/null
+ctrl-left: ^[[1;5D
+ctrl-right: ^[[1;5C
+```
+
+and codes to `~/.inputrc`
+
+```sh
+cat >>~/.inputrc
+"\e[1;5D": backward-word
+"\e[1;5C": forward-word
+```
+
+to see current bindings:
+`bind -p `
 
 
