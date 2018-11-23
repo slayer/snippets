@@ -1,4 +1,4 @@
-# Slayer's snippets
+# slayer's snippets
 
 ## mysql
 
@@ -155,12 +155,37 @@ aws s3 sync s3://my-bucket-in-eu-west1 s3://my-bucket-in-eu-central1 --source-re
   # --acl public-read
 ```
 
+copy by wildcard
+```
+aws s3 cp s3://bucket/folder/ . --recursive --exclude="*" --include="2017-12-20*"
+```
+
+sync (with public-read):
+
+```
+aws s3 sync . s3://bucket.bla.com/images/ --acl public-read
+```
+
 du
 ```
 # aws s3 du
 aws s3 ls s3://bucket --region=ca-central-1 --recursive | \
   grep -v -E "(Bucket: |Prefix: |LastWriteTime|^$|--)" | awk 'BEGIN {total=0}{total+=$3}END{print total/1024/1024/1024" GB"}'
 ```
+
+set meta (acl, cache-control header)
+```
+aws s3 cp s3://static.site.com/images/ s3://static.site.com/images/ \
+  --recursive --metadata-directive REPLACE --acl public-read --cache-control max-age=2592000,public
+
+# only png+jpg
+aws s3 cp s3://static.site.com/images/ s3://static.site.com/images/ --exclude "*" \
+    --include "*.jpg" --include "*.png" \
+    --recursive --metadata-directive REPLACE --expires 2022-01-01T00:00:00Z --acl public-read \
+    --cache-control max-age=2592000,public
+
+```
+
 
 
 ## sync servers
@@ -185,6 +210,14 @@ true | openssl s_client -showcerts -connect host:443 2>&1 |
     openssl x509 -text | grep -o 'DNS:[^,]*' | cut -f2 -d:
 ```
 
+
+# nmap
+
+list ciphers
+`nmap --script ssl-enum-ciphers -p 443 www.example.com`
+
+`sslscan`  works too!
+
 # dump cert:
 ```
 openssl x509 -text -noout -in cert.pem
@@ -199,6 +232,8 @@ do not display session in `w`
 bash -si
 ```
 
+### vars and patterns
+
 has prefix?
 ```
 if [ "${URL#http}" == "${URL}" ]; then
@@ -210,6 +245,38 @@ add prefix if needed
 ```
 [ ${URL%%.sql.bz2.gpg} == ${URL} ] && URL="${URL}.sql.bz2.gpg"
 ```
+
+Remove the spaces from the variable using the pattern replacement parameter expansion:
+```
+[[ -z "${param// }" ]]
+```
+${parameter/pattern/string}
+
+The pattern is expanded to produce a pattern just as in filename expansion.
+Parameter is expanded and the longest match of pattern against its value is replaced with string.
+If pattern begins with `/`, all matches of pattern are replaced with string.
+
+
+Test whether the string contains some character other than space:
+```
+if [[ $param = *[!\ ]* ]]; then
+  echo "\$param contains characters other than space"
+else
+  echo "\$param consists of spaces only"
+fi
+```
+
+to test for space, tab or newline
+```
+[[ $param = *[$' \t\n']* ]]
+```
+
+set unless already set
+```
+: ${USERID:=33}
+```
+
+### Redirections
 
 stdout redirection
 ```
@@ -259,6 +326,10 @@ exec 2>&1
 echo "This line will appear in $LOG_FILE, not 'on screen'"
 ```
 
+# Redirect as "file"
+```
+vi <(ps ax)
+```
 
 ## xkb capslock delay fix (?)
 ```
@@ -371,6 +442,15 @@ alias docker-rm-unused-volumes='docker volume rm $(docker volume ls -qf dangling
 alias docker-rm-stopped-containers='docker ps --filter "status=exited" -q --no-trunc | xargs --no-run-if-empty docker rm'
 ```
 
+some prune commands
+```
+docker image prune -a
+docker system prune -a
+docker image prune -af --filter "until=$(($(date +%s)-10*24*3600))" # 10 days
+docker images | egrep " (weeks|months)" | awk '{print $3}' | uniq | xargs -r -n1 docker rmi
+
+```
+
 save all images
 ```
 docker images --format='{{.ID}}' | while read i; do docker save "$i" > "${i}.tar.gz"; done
@@ -393,6 +473,13 @@ stats
 container image diff
 `docker diff container-id`
 
+### terminal
+manual set terminal size
+```
+stty size # current size
+stty cols 146 rows 36
+# docker exec -it $container -e COLUMNS=`tput cols` -e LINES=`tput lines` /bin/bash -l -i
+```
 
 ## Go
 ### pprof
@@ -577,3 +664,89 @@ to see current bindings:
 `bind -p `
 
 
+## Benchmarking
+
+CPU
+
+```sh
+sysbench --test=cpu --cpu-max-prime=20000 run
+
+# multithread
+sysbench --test=cpu --cpu-max-prime=20000 --num-threads=16 run
+
+```
+
+Network:
+
+```
+iperf -s        # server
+iperf -c host   # client
+```
+
+## tor proxy
+
+```sh
+docker run --name torproxy -d --restart=always -p 127.0.0.1:9051:9050/tcp dperson/torproxy
+```
+
+
+```
+# gsettings set org.gnome.desktop.input-sources xkb-options "['caps:escape']"
+```
+
+
+## Letsencrypt wildcard domain
+```
+docker run -it --rm --name certbot \
+  -v "/etc/letsencrypt:/etc/letsencrypt" \
+  -v "/var/lib/letsencrypt:/var/lib/letsencrypt" certbot/certbot  \
+  certonly --server https://acme-v02.api.letsencrypt.org/directory --manual --preferred-challenges dns
+```
+
+or
+
+```
+git clone https://github.com/certbot/certbot && cd certbot
+./certbot-auto certonly --manual -d *.pv.vpn.aytm.com -d pv.vpn.aytm.com --agree-tos --manual-public-ip-logging-ok --preferred-challenges dns-01 --server https://acme-v02.api.letsencrypt.org/directory
+```
+
+With Cloudflare plugin:
+```
+
+# prepare cloudflare.ini file:
+# dns_cloudflare_email = user@email.com
+# dns_cloudflare_api_key = XXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+cloudflare_ini=/path/to/cloudflare.ini
+docker run -it --rm --name certbot   \
+    -v "/etc/letsencrypt:/etc/letsencrypt"   \
+    -v "/var/lib/letsencrypt:/var/lib/letsencrypt" \
+    -v "${cloudflare_ini}:/etc/letsencrypt/cloudflare.ini" \
+    certbot/dns-cloudflare \
+    certonly -m vlad@email.com \
+            --agree-tos --manual-public-ip-logging-ok \
+            --server https://acme-v02.api.letsencrypt.org/directory \
+            --dns-cloudflare \
+            --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini  \
+            --dns-cloudflare-propagation-seconds 60 \
+            -d aaa.com -d *.aaa.com
+```
+
+
+# disable systemd-resolved
+```
+sudo systemctl disable systemd-resolved.service
+sudo service systemd-resolved stop
+rm /etc/resolv.conf ; echo "nameserver 1.1.1.1" >/etc/resolv.conf
+```
+Put the following line in the [main] section of your /etc/NetworkManager/NetworkManager.conf:
+
+```
+dns=default
+```
+Delete the symlink /etc/resolv.conf : `rm /etc/resolv.conf`
+Restart network-manager : `sudo service network-manager restart`
+
+## elasticsearch
+
+curl -XPUT -H "Content-Type: application/json" http://localhost:9200/_all/_settings -d '{"index.blocks.read_only_allow_delete": null}'
