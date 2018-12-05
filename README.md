@@ -498,6 +498,31 @@ mdadm --fail /dev/md0 /dev/sda1 ; mdadm --remove /dev/md0 /dev/sda1 # remove /de
 mdadm --add /dev/md0 /dev/sda1 # add /dev/sda1 to /dev/md0
 ```
 
+get UUID:
+```
+mdadm --detail /dev/mdX
+```
+
+
+recreate `/etc/mdadm/mdadm.conf`
+```
+mdadm --examine --scan
+mdadm --examine --scan >/etc/mdadm/mdadm.conf
+update-initramfs -u
+```
+
+fix `resync=PENDING`
+```
+mdadm --readwrite /dev/mdX
+```
+
+destroy the raid:
+```
+mdadm --stop /dev/mdX
+mdadm --detail /dev/mdX
+
+```
+
 ## LVM
 create Physical Volume
 `pvcreate /dev/xda1`
@@ -592,6 +617,12 @@ reverse shell
 ## tcpdump
 dump http traffic on `lo` and port 3200
 `sudo stdbuf -oL -eL /usr/sbin/tcpdump -i lo -A -s 10240 "tcp port 3200 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)" | egrep -a --line-buffered ".+(GET |HTTP\/|POST )|^[A-Za-z0-9-]+: " | perl -nle 'BEGIN{$|=1} { s/.*?(GET |HTTP\/[0-9.]* |POST )/\n$1/g; print }'`
+
+### fping
+network packet losses
+```
+fping -i10 -b1460 -o -l -q <addrs.txt
+```
 
 ## golang
 go install without vendor
