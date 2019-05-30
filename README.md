@@ -39,16 +39,21 @@ gpg --full-gen-key
 gpg --list-keys
 gpg --list-secret-keys
 
+# send pub key to remote server
 gpg --keyserver pgp.mit.edu --send-keys 2871AA6619415A0E20A52EA398290B7291D02F3A
+# export pub key
 gpg --armor --output my_backups_02.pub --export my_Backups_02
 
+# import pub key
 gpg --import my_backups_02.pub # on remote side
-gpg --search-keys --keyserver pgp.mit.edu backups@aytm.com
+gpg --search-keys --keyserver pgp.mit.edu name@aaa.com
 gpg --keyserver keyserver.ubuntu.com --recv 2871AA6619415A0E20A52EA398290B7291D02F3A
 
-gpg --encrypt -u backups@aytm.com -r backups@aytm.com FILE
-gpg --decrypt FILE.gpg >FILE
+# encrypt/decrypt file
+gpg --encrypt-files -r name@aaa.com FILE
+gpg --decrypt-files FILE.gpg
 
+# delete
 gpg --delete-keys ID
 gpg --delete-secret-keys ID
 gpg --delete-secret-and-public-keys ID
@@ -206,6 +211,7 @@ rsync -avz --checksum  --delete --progress --human-readable \
 ```
 
 ### parallel rsync:
+(untested)
 first run with --dry-run:
 `rsync -avzm --stats --safe-links --ignore-existing --dry-run --human-readable /data/projects REMOTE-HOST:/data/ > /tmp/transfer.log`
 
@@ -218,12 +224,17 @@ get site list from https host
 ```
 true | openssl s_client -showcerts -connect host:443 2>&1 |
     openssl x509 -text | grep -o 'DNS:[^,]*' | cut -f2 -d:
+
+# full info
+openssl s_client -connect 1.1.1.1:443  -msg
 ```
 
 dump cert:
 ```
 openssl x509 -text -noout -in cert.pem
 ```
+
+
 
 ## nmap
 
@@ -350,6 +361,29 @@ vi <(ps ax)
 /usr/share/X11/xkb/symbols/capslock:
 replace key <CAPS> {        repeat=no, [ ISO_Next_Group, Caps_Lock ] };
 ```
+
+## x11
+
+### paste by command
+```
+xdotool keydown Control key V keyup Control
+```
+
+### input devices
+```
+# list
+xinput --list
+# list props
+xinput --list-props 'FocalTechPS/2 FocalTech Touchpad'
+# set prop
+xinput --set-prop 'FocalTechPS/2 FocalTech Touchpad' 'Device Enabled' 0
+```
+
+
+
+### find window
+`xwininfo`
+`xwininfo -root -tree`
 
 ## apache2
 
@@ -566,7 +600,7 @@ shift+numpad keys = home/end like in windows
 
 add swap
 ```
-dd if=/dev/zero of=/swap bs=1G count=1; chmod go= /swap; mkswap /swap; echo "/swap swap  swap  sw  0 0" >>/etc/fstab ; swapon /swap
+dd if=/dev/zero of=/swap bs=1M count=1024 && chmod go= /swap && mkswap /swap && echo "/swap swap  swap  sw  0 0" >>/etc/fstab  && swapon /swap
 ```
 
 ## img
@@ -740,6 +774,17 @@ Network:
 ```
 iperf -s        # server
 iperf -c host   # client
+```
+
+HTTP:
+response time:
+```
+curl_time() {
+    curl -so /dev/null -w "%{http_code}: size:%{size_download}b speed:%{speed_download}b/s\tdns:%{time_namelookup}s con:%{time_connect}s \
+pretr:%{time_pretransfer}s sttra:%{time_starttransfer}s   total:%{time_total}s\n" "$@"
+}
+
+while sleep 0.5; do curl_time 0:3200/health; done
 ```
 
 ## tor proxy
@@ -919,6 +964,11 @@ mkfs.ext4 -m0 -O ^has_journal -E lazy_itable_init=0,lazy_journal_init=0,discard 
 mount -o discard,nodiratime,noatime /dev/sdX /dir
 ```
 
+## resize fs
+
+to resize disk online run `cfdisk` and recreate partition from start block
+then run `partprobe` and `lsblk`, then `resize2fs /dev/sdXn`
+
 
 ## zram
 
@@ -945,3 +995,18 @@ tmux new -s bob -t alice # second user
 
 ```
 details: https://www.hamvocke.com/blog/remote-pair-programming-with-tmux/
+
+## ntp
+
+sync time
+```
+ntpdate -sb time.nist.gov
+```
+
+## envs
+
+read env of process
+```
+xargs --null --max-args=1 echo < /proc/$$/environ
+xargs -0 -L1 -a /proc/self/environ
+```
