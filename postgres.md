@@ -21,4 +21,22 @@
 solution: increase WAL on master, resync slave
 
 
+## Processes/Queries/Locks
 
+list of active queries
+```
+SELECT user, pid, client_addr, waiting, query, query_start, NOW() - query_start AS elapsed
+FROM pg_stat_activity
+WHERE query != '<IDLE>'
+-- AND EXTRACT(EPOCH FROM (NOW() - query_start)) > 1
+ORDER BY elapsed DESC;
+```
+
+waiting:
+```
+SELECT user, pid, client_addr, waiting, query, query_start, NOW() - query_start AS elapsed
+FROM pg_stat_activity
+WHERE query != '<IDLE>'
+ AND waiting = 't'
+ORDER BY elapsed DESC;
+```
