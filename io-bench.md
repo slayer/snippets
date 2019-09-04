@@ -74,3 +74,40 @@ write_lat_log=1m-read.results
 EOF
 ```
 
+
+
+
+
+The following example benchmarks maximum write throughput:
+
+```
+fio --ioengine=sync --direct=0 \
+--fsync_on_close=1 --randrepeat=0 --nrfiles=1  --name=seqwrite --rw=write \
+--bs=1m --size=20G --end_fsync=1 --fallocate=none  --overwrite=0 --numjobs=1 \
+--directory=/mnt/gcfs --loops=10
+```
+The following example benchmarks maximum write IOPS:
+
+```
+fio --ioengine=sync --direct=0 \
+--fsync_on_close=1 --randrepeat=0 --nrfiles=1  --name=randwrite --rw=randwrite \
+--bs=4K --size=1G --end_fsync=1 --fallocate=none  --overwrite=0 --numjobs=80 \
+--sync=1 --directory=/mnt/standard --loops=10
+```
+
+The following example benchmarks maximum read throughput:
+
+```
+fio --ioengine=sync --direct=0 \
+--fsync_on_close=1 --randrepeat=0 --nrfiles=1  --name=seqread --rw=read \
+--bs=1m --size=240G --end_fsync=1 --fallocate=none  --overwrite=0 --numjobs=1 \
+--directory=/mnt/ssd --invalidate=1 --loops=10
+```
+
+The following example benchmarks maximum read IOPS:
+```
+fio --ioengine=sync --direct=0 \
+--fsync_on_close=1 --randrepeat=0 --nrfiles=1  --name=randread --rw=randread \
+--bs=4K --size=1G --end_fsync=1 --fallocate=none  --overwrite=0 --numjobs=20 \
+--sync=1 --invalidate=1 --directory=/mnt/standard  --loops=10
+```
