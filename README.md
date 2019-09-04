@@ -2,10 +2,16 @@
 
 ## mysql
 
+Add user:
+```
+CREATE USER 'newuser'@'localhost' IDENTIFIED BY 'password';
+```
+
 GRANT
 ```
 GRANT ALL PRIVILEGES ON *.* TO 'user'@'localhost' IDENTIFIED BY 'pass'; # WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO 'user'@'%' IDENTIFIED BY 'pass'; # WITH GRANT OPTION;
+GRANT ALL ON db.* TO 'user'@'%'; # to specific db
 FLUSH PRIVILEGES;
 ```
 
@@ -14,7 +20,7 @@ dump
 mysqldump -u USER -pPASSWORD DATABASE > /path/to/file/dump.sql
 
 # schema only
-mysqldump --no-data - u USER -pPASSWORD DATABASE > /path/to/file/schema.sql
+mysqldump --no-data -u USER -pPASSWORD DATABASE > /path/to/file/schema.sql
 
 # certain tables only
 mysqldump -u USER -pPASSWORD DATABASE TABLE1 TABLE2 TABLE3 > /path/to/file/dump_table.sql
@@ -244,6 +250,19 @@ list ciphers
 `sslscan`  works too!
 
 
+## mac list
+
+```
+nmap -sn 192.168.1.0/24
+arp-scan --interface=wlp4s0 --localnet
+```
+
+## wifi
+show wifi networks
+```
+nmcli dev wifi
+```
+
 
 ## bash
 
@@ -356,13 +375,8 @@ Redirect as "file"
 vi <(ps ax)
 ```
 
-## xkb capslock delay fix (?)
-```
-/usr/share/X11/xkb/symbols/capslock:
-replace key <CAPS> {        repeat=no, [ ISO_Next_Group, Caps_Lock ] };
-```
 
-## x11
+# x11
 
 ### paste by command
 ```
@@ -379,11 +393,49 @@ xinput --list-props 'FocalTechPS/2 FocalTech Touchpad'
 xinput --set-prop 'FocalTechPS/2 FocalTech Touchpad' 'Device Enabled' 0
 ```
 
-
-
 ### find window
 `xwininfo`
 `xwininfo -root -tree`
+
+
+## xkb capslock delay fix (?)
+```
+/usr/share/X11/xkb/symbols/capslock:
+replace key <CAPS> {        repeat=no, [ ISO_Next_Group, Caps_Lock ] };
+```
+
+show xkb options:
+```
+setxkbmap -print -verbose 10
+```
+
+swap caps and ctrl; use ralt to switch layout; turn led on switch
+```
+setxkbmap -option -option ctrl:swapcaps,grp:toggle,grp_led:caps
+```
+
+## remap keys (or disable)
+
+disable capslock
+```
+$ xmodmap -pke |less
+$ xmodmap -pke | grep -i caps
+keycode  37 = Caps_Lock NoSymbol Caps_Lock
+$ xmodmap -e "keycode 37 = "
+```
+
+## screensaver
+
+```
+xset s off	            # Disable screen saver blanking
+xset s 3600 3600	      # Change blank time to 1 hour
+xset -dpms	            # Turn off DPMS
+xset s off -dpms	      # Disable DPMS and prevent screen from blanking
+xset dpms force off	    # Turn off screen immediately
+xset dpms force standby	# Standby screen
+xset dpms force suspend	# Suspend screen
+xset q                  # Get current settings
+```
 
 ## apache2
 
@@ -405,6 +457,14 @@ RewriteRule ^.*$ /system/maintenance.html [L]
 
 ```
 python -m SimpleHTTPServer 1337 &
+```
+
+## python
+
+create .deb from python package
+```
+sudo apt install python-stdeb
+pypi-install package
 ```
 
 ## update kernel
@@ -528,6 +588,13 @@ stty size # current size
 stty cols 146 rows 36
 # docker exec -it $container -e COLUMNS=`tput cols` -e LINES=`tput lines` /bin/bash -l -i
 ```
+
+chop (wrap) long lines
+```
+tput rmam # chop long lines
+tput smam # cancel
+```
+
 
 ## Go
 ### pprof
@@ -1009,4 +1076,20 @@ read env of process
 ```
 xargs --null --max-args=1 echo < /proc/$$/environ
 xargs -0 -L1 -a /proc/self/environ
+```
+
+
+
+## prometheus
+
+install node exporter
+```
+docker run -d \
+  --net="host" \
+  --pid="host" \
+  --name=node-exporter \
+  --restart=always \
+  -v "/:/host:ro,rslave" \
+  quay.io/prometheus/node-exporter \
+  --path.rootfs=/host
 ```
